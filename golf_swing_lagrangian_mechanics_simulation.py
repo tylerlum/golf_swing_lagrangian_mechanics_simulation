@@ -66,6 +66,7 @@ T_FIXED = 1  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle f
 θ_0 = np.radians(90)  # Initial arm angle for backswing
 ARM_TYPE = Arm_Type.PASSIVE_ARMS
 T_HORIZON = 10
+CONTROLLED_ARM_ANGULAR_ACCEL = 1
 
 M_A = 2 * 5.4  # Each arm about 5.4kg https://whatthingsweigh.com/how-much-does-an-arm-weigh/
 L_A = 0.50 # Arm-length 0.5m https://www.craftyarncouncil.com/standards/man-size
@@ -79,6 +80,7 @@ M_C = 0.2  # Clubhead about 200g https://www.hirekogolf.com/head-weights-shaft-w
 D_θ_0 = 0  # No initial arm angle speed at start of backswing
 φ_0 = np.radians(90)  # Initial wrist angle is 90 degrees
 D_φ_0 = 0  # No initial wrist angle speed at start of backswing
+g = 9.8  # Acceleration due to gravity
 
 # ## Prepare variables for simulation
 
@@ -103,9 +105,70 @@ D_φ[0] = D_φ_0
 
 # ## Arm and Wrist Specific Forward Simulation
 
+# +
 def passive_arm_fixed_wrist_dd_θ_f(θ, D_θ, φ, D_φ, t):
+    return ((-(M_A/2 + M_S + M_C)*L_A + (M_S/2 + M_C)*L_S) * g * np.sin(θ) /
+            ((M_A/3 + M_S + M_C)*L_A**2 + (M_S/3 + M_C)*L_S**2))
     
+def passive_arm_fixed_wrist_dd_φ_f(θ, D_θ, φ, D_φ, t):
+    return 0
 
+def _passive_arm_loose_wrist_helper(θ, D_θ, φ, D_φ, t):
+    # E*dd_θ + F*dd_φ = Z
+    E = (M_A/3 + M_S + M_C)*L_A**2 + (M_S/3 + M_C)*L_S**2 - (M_S + 2*M_C)*L_A*L_S*np.cos(φ)
+    F = -(M_S/3 + M_C)*L_S**2 + (M_S/2 + M_C)*L_A*L_S*np.cos(φ)
+    G = (M_S + 2*M_C)*L_A*L_S*np.sin(φ)
+    H = -(M_S/2 + M_C)*L_A*L_S_np.sin(φ)
+    Z = -(M_A/2 + M_S + M_C)*g_L_A*np.sin(θ) - (M_S/2 + M_C)*g*L_S*np.sin(φ - θ) - G*D_θ*D_φ - H*D_φ**2
+    
+    # J*dd_θ + K*dd_φ = P
+    J = (M_S/2 + M_C)*L_A*L_S*np.cos(φ) - (M_S/3 + M_C)*L_S**2
+    K = (M_S/3 + M_C)*L_S**2
+    P = -(M_S/2 + M_C)*L_A*L_S*D_θ*(D_φ - D_θ)*np.sin(φ) + (M_S/2 + M_C)*g*L_S*np.sin(φ - θ)
+    
+    # Solve system of equations
+    # A = (E F
+    #      J K)
+    # x = (dd_θ
+    #      dd_φ)
+    # b = (Z
+    #      P)
+    A = np.array([[E, F],
+                  [J, K]])
+    b = np.array([Z,
+                  P])
+    x = np.squeeze(np.linalg.solve(A, b))
+    assert(x.size == 2)
+    
+    dd_θ, dd_φ = x[0], x[1]
+    return dd_θ, dd_φ
+
+def passive_arm_loose_wrist_dd_θ_f(θ, D_θ, φ, D_φ, t):
+    dd_θ, _ = _passive_arm_loose_wrist_helper(θ, D_θ, φ, D_φ, t)
+    return dd_θ
+
+def passive_arm_loose_wrist_dd_φ_f(θ, D_θ, φ, D_φ, t):
+    _, dd_φ = _passive_arm_loose_wrist_helper(θ, D_θ, φ, D_φ, t)
+    return dd_φ
+
+def controlled_arm_fixed_wrist_dd_θ_f(θ, D_θ, φ, D_φ, t):
+    return CONTROLLED_ARM_ANGULAR_ACCEL
+
+def controlled_arm_fixed_wrist_dd_φ_f(θ, D_θ, φ, D_φ, t):
+    return 0
+
+def controlled_arm_loose_wrist_dd_θ_f(θ, D_θ, φ, D_φ, t):
+    return CONTROLLED_ARM_ANGULAR_ACCEL
+
+def controlled_arm_loose_wrist_dd_φ_f(θ, D_θ, φ, D_φ, t):
+    dd_θ = controlled_arm_loose_wrist_dd_θ_f(θ, D_θ, φ, D_φ, t)
+    W = -(M_S/2 + M_C)*L_A*L_S*D_θ*(D_φ - D_θ)*np.sin(φ) + (M_S/2 + M_C)*g*L_S*np.sin(φ - θ)
+    numerator = W + (M_S/3 + M_C)*L_S**2*dd_θ - (M_S/2 + M_C)*L_A*L_S*dd_θ*np.cos(φ)
+    denominator = (M_S/3 + M_C)*L_S**2
+    return numerator / denominator
+
+
+# -
 
 # ## Run simulation
 
@@ -121,18 +184,17 @@ for n in tqdm(range(n_steps - 1)):
 
     # Get arm type and wrist type specific functions
     if ARM_TYPE == Arm_Type.PASSIVE_ARMS and wrist_type == Wrist_Type.FIXED_WRIST:
-        dd_θ_f = 
-        dd_φ_f = 
-
+        dd_θ_f = passive_arm_fixed_wrist_dd_θ_f
+        dd_φ_f = passive_arm_fixed_wrist_dd_φ_f
     elif ARM_TYPE == Arm_Type.PASSIVE_ARMS and wrist_type == Wrist_Type.LOOSE_WRIST:
-        dd_θ_f = 
-        dd_φ_f =
+        dd_θ_f = passive_arm_loose_wrist_dd_θ_f
+        dd_φ_f = passive_arm_loose_wrist_dd_φ_f
     elif ARM_TYPE == Arm_Type.CONTROLLED_ARMS and wrist_type == Wrist_Type.FIXED_WRIST:
-        dd_θ_f = 
-        dd_φ_f =
+        dd_θ_f = controlled_arm_fixed_wrist_dd_θ_f
+        dd_φ_f = controlled_arm_fixed_wrist_dd_φ_f
     elif ARM_TYPE == Arm_Type.CONTROLLED_ARMS and wrist_type == Wrist_Type.LOOSE_WRIST:
-        dd_θ_f = 
-        dd_φ_f =
+        dd_θ_f = controlled_arm_loose_wrist_dd_θ_f
+        dd_φ_f = controlled_arm_loose_wrist_dd_φ_f
     else:
         raise ValueError(f"Invalid pair ARM_TYPE = {ARM_TYPE}, wrist_type = {wrist_type}")
 
