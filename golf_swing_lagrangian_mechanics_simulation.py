@@ -45,7 +45,7 @@ class Forward_Sim_Method(Enum):
     IMPROVED_EULER = "IMPROVED_EULER"
 
 
-DT = 1e-2
+DT = 1e-4
 FORWARD_METHOD = Forward_Sim_Method.FORWARD_EULER
 
 
@@ -118,8 +118,8 @@ def _passive_arm_loose_wrist_helper(θ, D_θ, φ, D_φ, t):
     E = (M_A/3 + M_S + M_C)*L_A**2 + (M_S/3 + M_C)*L_S**2 - (M_S + 2*M_C)*L_A*L_S*np.cos(φ)
     F = -(M_S/3 + M_C)*L_S**2 + (M_S/2 + M_C)*L_A*L_S*np.cos(φ)
     G = (M_S + 2*M_C)*L_A*L_S*np.sin(φ)
-    H = -(M_S/2 + M_C)*L_A*L_S_np.sin(φ)
-    Z = -(M_A/2 + M_S + M_C)*g_L_A*np.sin(θ) - (M_S/2 + M_C)*g*L_S*np.sin(φ - θ) - G*D_θ*D_φ - H*D_φ**2
+    H = -(M_S/2 + M_C)*L_A*L_S*np.sin(φ)
+    Z = -(M_A/2 + M_S + M_C)*g*L_A*np.sin(θ) - (M_S/2 + M_C)*g*L_S*np.sin(φ - θ) - G*D_θ*D_φ - H*D_φ**2
     
     # J*dd_θ + K*dd_φ = P
     J = (M_S/2 + M_C)*L_A*L_S*np.cos(φ) - (M_S/3 + M_C)*L_S**2
@@ -176,7 +176,7 @@ for n in tqdm(range(n_steps - 1)):
     # Currently at step n (time t), will be calculating values for n+1 (time t+dt)
     
     # Validate input
-    wrist_type = Wrist_Type.FIXED_WRIST if t < T_FIXED else Wrist_Type.LOOSE_WRIST
+    wrist_type = Wrist_Type.FIXED_WRIST if t[n] < T_FIXED else Wrist_Type.LOOSE_WRIST
     if wrist_type != Wrist_Type.FIXED_WRIST and wrist_type != Wrist_Type.LOOSE_WRIST:
         raise ValueError(f"Invalid wrist_type = {wrist_type}")
     if ARM_TYPE != Arm_Type.PASSIVE_ARMS and ARM_TYPE != Arm_Type.CONTROLLED_ARMS:
@@ -200,32 +200,49 @@ for n in tqdm(range(n_steps - 1)):
 
     # Calculate update
     if FORWARD_METHOD == Forward_Sim_Method.FORWARD_EULER:
-        D_θ[n+1] = D_θ[n] + dt * dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
-        θ[n+1] = θ[n] + dt * D_θ[n]
-        D_φ[n+1] = D_φ[n] + dt * dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
-        φ[n+1] = φ[n] + dt * D_φ[n]
+        D_θ[n+1] = D_θ[n] + DT*dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
+        θ[n+1] = θ[n] + DT*D_θ[n]
+        D_φ[n+1] = D_φ[n] + DT*dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
+        φ[n+1] = φ[n] + DT*D_φ[n]
     elif FORWARD_METHOD == Forward_Sim_Method.IMPROVED_EULER:
         raise NotImplementedError()
         # Compute intermediate values
-        D_θ_n_plus_1 = D_θ[n] + dt * dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
-        θ_n_plus_1 = θ[n] + dt * D_θ[n]
-        D_φ_n_plus_1 = D_φ[n] + dt * dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
-        φ_n_plus_1 = φ[n] + dt * D_φ[n]
+        D_θ_n_plus_1 = D_θ[n] + DT*dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
+        θ_n_plus_1 = θ[n] + DT*D_θ[n]
+        D_φ_n_plus_1 = D_φ[n] + DT*dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
+        φ_n_plus_1 = φ[n] + DT*D_φ[n]
 
         # Calculate update
-        D_θ[n+1] = D_θ[n] + dt/2 * (dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n]) +
-                                    dd_θ_f(θ_n_plus_1, D_θ_n_plus_1, φ_n_plus_1, D_φ_n_plus_1, t[n+1]))
-        θ[n+1] = θ[n] + dt/2 * (D_θ[n] + D_θ[n+1])
-        D_φ[n+1] = D_φ[n] + dt/2 * (dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n]) +
-                                    dd_φ_f(θ_n_plus_1, D_θ_n_plus_1, φ_n_plus_1, D_φ_n_plus_1, t[n+1]))
-        φ[n+1] = φ[n] + dt/2 * (D_φ[n] + D_φ[n+1])
+        D_θ[n+1] = D_θ[n] + DT/2*(dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n]) +
+                                  dd_θ_f(θ_n_plus_1, D_θ_n_plus_1, φ_n_plus_1, D_φ_n_plus_1, t[n+1]))
+        θ[n+1] = θ[n] + DT/2*(D_θ[n] + D_θ[n+1])
+        D_φ[n+1] = D_φ[n] + DT/2*(dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n]) +
+                                  dd_φ_f(θ_n_plus_1, D_θ_n_plus_1, φ_n_plus_1, D_φ_n_plus_1, t[n+1]))
+        φ[n+1] = φ[n] + DT/2*(D_φ[n] + D_φ[n+1])
     else:
         raise ValueError(f"Invalid FORWARD_METHOD = {FORWARD_METHOD}")
 
 # ## Plot golf swing
 
+# +
+fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,10))
 
+axes[0].plot(t, np.degrees(θ))
+axes[0].plot([T_FIXED, T_FIXED], [np.min(np.degrees(θ)), np.max(np.degrees(θ))])
+axes[0].set_xlabel('t [s]')
+axes[0].set_ylabel('θ [degrees]')
+axes[0].set_title(f'θ vs. t for ARM_TYPE = {ARM_TYPE}')
+
+axes[1].plot(t, np.degrees(φ))
+axes[1].plot([T_FIXED, T_FIXED], [np.min(np.degrees(φ)), np.max(np.degrees(φ))])
+axes[1].set_xlabel('t [s]')
+axes[1].set_ylabel('φ [degrees]')
+axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
+# -
 
 # ## Visualize golf swing
 
-
+X_R = -L_A*np.sin(θ)
+Y_R = -L_A*np.cos(θ)
+X_Q = X_R - L_S*np.sin(φ - θ)
+Y_Q = Y_R + L_S*np.cos(φ - θ)
