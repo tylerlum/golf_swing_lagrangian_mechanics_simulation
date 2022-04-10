@@ -63,7 +63,7 @@ class Wrist_Type(Enum):
 
 # +
 T_FIXED = 1  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
-θ_0 = np.radians(90)  # Initial arm angle for backswing
+θ_0 = np.radians(0)  # Initial arm angle for backswing
 ARM_TYPE = Arm_Type.PASSIVE_ARMS
 T_HORIZON = 10
 CONTROLLED_ARM_ANGULAR_ACCEL = 1
@@ -242,7 +242,44 @@ axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
 
 # ## Visualize golf swing
 
+# +
+# Compute positions
 X_R = -L_A*np.sin(θ)
 Y_R = -L_A*np.cos(θ)
 X_Q = X_R - L_S*np.sin(φ - θ)
 Y_Q = Y_R + L_S*np.cos(φ - θ)
+
+# Compute clubhead speed
+D_X_Q = -L_A*np.cos(θ)*D_θ - L_S*np.cos(φ - θ)*(D_φ - D_θ)
+D_Y_Q = L_A*np.sin(θ)*D_θ - L_S*np.sin(φ - θ)*(D_φ - D_θ)
+
+# +
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+n = int(2/DT)
+hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='r', label='hand/wrist', marker='X', markersize=50)
+clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='b', label='clubhead', marker='*', markersize=50)
+shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='g', label='shaft')
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+shoulder_plot, = ax.plot([0], [0], color='k', label='shoulder', marker='o', markersize=50)
+clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+# ax.scatter([X_R[n]], [Y_R[n]], color='r', label='hand/wrist')
+# ax.scatter([X_Q[n]], [Y_Q[n]], color='b', label='clubhead')
+# ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+# for n in tqdm(range(n_steps)):
+#     hand_plot.set_xdata(X_R[n])
+#     hand_plot.set_ydata(Y_R[n])
+
+#     clubhead_plot.set_xdata(X_Q[n])
+#     clubhead_plot.set_ydata(Y_Q[n])
+#     plt.draw()
+#     plt.pause(0.00001)
+#     clubhead_speed_arrow.set_xdata()
+# -
+
+hand_plot[0]
+
+hand_plot[0]
+
+D_Y_Q
+
+
