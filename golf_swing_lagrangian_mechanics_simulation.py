@@ -63,24 +63,29 @@ class Wrist_Type(Enum):
 
 # +
 T_FIXED = 1  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
-θ_0 = np.radians(0)  # Initial arm angle for backswing
 ARM_TYPE = Arm_Type.PASSIVE_ARMS
 T_HORIZON = 10
 CONTROLLED_ARM_ANGULAR_ACCEL = 1
 
+# Initial conditions
+θ_0 = np.radians(0)  # Initial arm angle for backswing
+# -
+
+# ## Setup fixed golf swing variable parameters
+
+# +
 M_A = 2 * 5.4  # Each arm about 5.4kg https://whatthingsweigh.com/how-much-does-an-arm-weigh/
 L_A = 0.50 # Arm-length 0.5m https://www.craftyarncouncil.com/standards/man-size
 M_S = 0.065 + 0.050  # Shaft weight about 65g + 50g https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
 L_S = 45 * 2.54 / 100  # Shaft length about 45 inches https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
 M_C = 0.2  # Clubhead about 200g https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
-# -
 
-# ## Setup fixed golf swing variable parameters
-
+# Initial conditions
 D_θ_0 = 0  # No initial arm angle speed at start of backswing
 φ_0 = np.radians(90)  # Initial wrist angle is 90 degrees
 D_φ_0 = 0  # No initial wrist angle speed at start of backswing
 g = 9.8  # Acceleration due to gravity
+# -
 
 # ## Prepare variables for simulation
 
@@ -227,17 +232,21 @@ for n in tqdm(range(n_steps - 1)):
 # +
 fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,10))
 
+θ_min, θ_max = np.min(np.degrees(θ)), np.max(np.degrees(θ))
 axes[0].plot(t, np.degrees(θ))
-axes[0].plot([T_FIXED, T_FIXED], [np.min(np.degrees(θ)), np.max(np.degrees(θ))])
+axes[0].plot([T_FIXED, T_FIXED], [θ_min, θ_max], label='t_{fixed}')
 axes[0].set_xlabel('t [s]')
 axes[0].set_ylabel('θ [degrees]')
 axes[0].set_title(f'θ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[0].legend()
 
+φ_min, φ_max = np.min(np.degrees(φ)), np.max(np.degrees(φ))
 axes[1].plot(t, np.degrees(φ))
-axes[1].plot([T_FIXED, T_FIXED], [np.min(np.degrees(φ)), np.max(np.degrees(φ))])
+axes[1].plot([T_FIXED, T_FIXED], [φ_min, φ_max], label='t_{fixed}')
 axes[1].set_xlabel('t [s]')
 axes[1].set_ylabel('φ [degrees]')
 axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[1].legend()
 # -
 
 # ## Visualize golf swing
@@ -254,120 +263,32 @@ D_X_Q = -L_A*np.cos(θ)*D_θ - L_S*np.cos(φ - θ)*(D_φ - D_θ)
 D_Y_Q = L_A*np.sin(θ)*D_θ - L_S*np.sin(φ - θ)*(D_φ - D_θ)
 
 # +
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-n = int(2/DT)
-hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='r', label='hand/wrist', marker='X', markersize=50)
-clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='b', label='clubhead', marker='*', markersize=50)
-shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='g', label='shaft')
-arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-shoulder_plot, = ax.plot([0], [0], color='k', label='shoulder', marker='o', markersize=50)
-clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-# ax.scatter([X_R[n]], [Y_R[n]], color='r', label='hand/wrist')
-# ax.scatter([X_Q[n]], [Y_Q[n]], color='b', label='clubhead')
-# ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-# for n in tqdm(range(n_steps)):
-#     hand_plot.set_xdata(X_R[n])
-#     hand_plot.set_ydata(Y_R[n])
-
-#     clubhead_plot.set_xdata(X_Q[n])
-#     clubhead_plot.set_ydata(Y_Q[n])
-#     plt.draw()
-#     plt.pause(0.00001)
-#     clubhead_speed_arrow.set_xdata()
-
-# +
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-n = 0
-markersize = 50
-
-shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
-arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
-
-shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
-clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
-clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-
-
-for n in tqdm(range(n_steps)):
-    ax.clear()
-
-    shoulder_plot.set_xdata([0])
-    shoulder_plot.set_ydata([0])
-    arm_plot.set_xdata([0, X_R[n]])
-    arm_plot.set_ydata([0, Y_R[n]])
-    hand_plot.set_xdata([X_R[n]])
-    hand_plot.set_ydata([Y_R[n]])
-    shaft_plot.set_xdata([X_R[n], X_Q[n]])
-    shaft_plot.set_ydata([Y_R[n], Y_Q[n]])
-    clubhead_plot.set_xdata([X_Q[n]])
-    clubhead_plot.set_ydata([Y_Q[n]])
-#     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-    plt.draw()
-    plt.pause(0.001)
-    break
-#     pt.savefig(f'{n}.png')
-
-# +
-from celluloid import Camera
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-camera = Camera(fig)
-n = 0
-markersize = 50
-
-shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
-arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
-
-shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
-clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
-# clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-
-
-vals = np.linspace(int(T_FIXED/DT), n_steps-1, 100)
-for n in tqdm(vals):
-    n = int(n)
-    ax.clear()
-    
-    shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
-    arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-    hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
-
-    shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
-    clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
-#     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-    camera.snap()
-#     plt.savefig(f"{n}.png")
-# -
-
-from IPython.display import HTML # to show the animation in Jupyter
-animation = camera.animate() # animation ready
-HTML(animation.to_html5_video())
-
-t[-1]
-
-# +
 from matplotlib.animation import FFMpegWriter
-metadata = dict(title='Moviesss', artist='tylers')
-writer = FFMpegWriter(fps=15, metadata=metadata)
 
+# Setup FFMPEG saving
+fps = 5
+filename = f"golf_swing.mp4"
+metadata = dict(title='Golf Swing', artist='tylerlum')
+writer = FFMpegWriter(fps=fps, metadata=metadata)
+
+# Create figure
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
 n = 0
 markersize = 50
 
+# Create initial plots
 shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
 arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
 hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
 
 shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
 clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
-# clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
 
-with writer.saving(fig, "sinWave2.mp4", 100):
+with writer.saving(fig, filename, dpi=100):
+    t_btwn_frames = 1 / fps
+    steps_btwn_frames = math.ceil(t_btwn_frames/DT)
 
-    vals = np.linspace(int(T_FIXED/DT), n_steps-1, 100)
-    for n in tqdm(vals):
-        n = int(n)
+    for n in tqdm(range(0, n_steps, steps_btwn_frames)):
         ax.clear()
         tsss = ax.text(0, 0, f'{n}')
         shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
@@ -381,5 +302,7 @@ with writer.saving(fig, "sinWave2.mp4", 100):
         writer.grab_frame()
 
 # -
+
+[x for x in range(0, 20, 2)]
 
 
