@@ -68,7 +68,7 @@ T_HORIZON = 10
 CONTROLLED_ARM_ANGULAR_ACCEL = 1
 
 # Initial conditions
-θ_0 = np.radians(0)  # Initial arm angle for backswing
+θ_0 = np.radians(150)  # Initial arm angle for backswing
 # -
 
 # ## Setup fixed golf swing variable parameters
@@ -261,12 +261,38 @@ Y_Q = Y_R + L_S*np.cos(φ - θ)
 # Compute clubhead speed
 D_X_Q = -L_A*np.cos(θ)*D_θ - L_S*np.cos(φ - θ)*(D_φ - D_θ)
 D_Y_Q = L_A*np.sin(θ)*D_θ - L_S*np.sin(φ - θ)*(D_φ - D_θ)
+# -
+
+np.where((X_Q > 0) & (Y_Q < 0))
+
+# +
+# Compute time and n of collision with ball
+n_collision = np.where((X_Q > 0) & (Y_Q < 0))[0][0]
+t_collision = n_collision * DT
+x_collision = X_Q[n_collision]
+y_collision = Y_Q[n_collision]
+d_x_collision = D_X_Q[n_collision]
+d_y_collision = D_Y_Q[n_collision]
+v_collision = (d_x_collision**2 + d_y_collision**2)**0.5
+print(f"First collision at n_collision = {n_collision}, t_collision = {t_collision} s")
+print(f"Collides at about (x={round(x_collision, 2)} m, y={round(y_collision, 2)} m) with speed {round(v_collision, 2)} m/s")
+
+t_collision_with_buffer = t_collision + 0.5
+n_collision_with_buffer = math.ceil(t_collision_with_buffer/DT)
+print(f"Will run sim up to n_collision_with_buffer = {n_collision_with_buffer}, t_collision_with_buffer = {round(t_collision_with_buffer, 2)}")
+
+# Compute xlim, ylim
+max_len = (L_A + L_S) * 1.2
+xmin = -max_len 
+xmax = max_len
+ymin = -max_len
+ymax = max_len
 
 # +
 from matplotlib.animation import FFMpegWriter
 
 # Setup FFMPEG saving
-fps = 5
+fps = 50
 filename = f"golf_swing.mp4"
 metadata = dict(title='Golf Swing', artist='tylerlum')
 writer = FFMpegWriter(fps=fps, metadata=metadata)
@@ -274,7 +300,43 @@ writer = FFMpegWriter(fps=fps, metadata=metadata)
 # Create figure
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
 n = 0
-markersize = 50
+markersize = 20
+ax.set_xlim([xmin, xmax])
+ax.set_ylim([ymin, ymax])
+ax.set_xlabel(f'x [m]')
+ax.set_ylabel(f'y [m]')
+ax.set_title(f'Golf swing for {ARM_TYPE}, t_fixed = {T_FIXED} s, θ_0 = {round(math.degrees(θ_0), 2)} deg, achieves {round(v_collision, 2)} m/s')
+ax.set_aspect(aspect=1)
+plt.grid()
+
+# Draw stickman
+head_radius = 0.15
+head_to_shoulder_dist = 0.3
+head_patch = plt.Circle((0, head_to_shoulder_dist), radius=head_radius, edgecolor='y', facecolor="none")
+ax.add_patch(head_patch)
+body_len = 0.6
+hip_position = head_to_shoulder_dist-head_radius-body_len
+body_plot = ax.plot([0, 0], [head_to_shoulder_dist-head_radius, hip_position], color='y')
+leg_len, leg_angle = 1, np.radians(15)
+left_leg_plot = ax.plot([0, -leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color='y')
+right_leg_plot = ax.plot([0, leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color='y')
+
+# Draw smile
+eye_dist = 0.1
+eye_radius = 0.01
+left_eye_patch = plt.Circle((-eye_dist/2, head_to_shoulder_dist + 0.03), radius=eye_radius, color='k')
+right_eye_patch = plt.Circle((eye_dist/2, head_to_shoulder_dist + 0.03), radius=eye_radius, color='k')
+ax.add_patch(left_eye_patch)
+ax.add_patch(right_eye_patch)
+smile_width = 0.1
+smile_x = np.linspace(-smile_width/2, smile_width/2, 50)
+smile_y = 10*smile_x**2 + head_to_shoulder_dist - 0.08
+smile_plot = ax.plot(smile_x, smile_y, color='k')
+
+# Draw golf ball and tee
+ground_level = ymin
+ground_plot = ax.plot([xmin, xmax], [ground_level, ground_level], linewidth=10, color='g')
+tee_plot = ax.plot([0, 0], [ground_level, y_collision-0.1], linewidth=5, color='k')
 
 # Create initial plots
 shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
@@ -288,21 +350,10 @@ with writer.saving(fig, filename, dpi=100):
     t_btwn_frames = 1 / fps
     steps_btwn_frames = math.ceil(t_btwn_frames/DT)
 
-    for n in tqdm(range(0, n_steps, steps_btwn_frames)):
-        ax.clear()
-        tsss = ax.text(0, 0, f'{n}')
-        shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
-        arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-        hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
-
-        shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
-        clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
-    #     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
-    #     plt.savefig(f"{n}.png")
+    for n in tqdm(range(0, n_collision_with_buffer, steps_btwn_frames)):
+        shoulder_plot.set_data([0], [0])
+        arm_plot.set_data([0, X_R[n]], [0, Y_R[n]])
+        hand_plot.set_data([X_R[n]], [Y_R[n]])
+        shaft_plot.set_data([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]])
+        clubhead_plot.set_data([X_Q[n]], [Y_Q[n]])
         writer.grab_frame()
-
-# -
-
-[x for x in range(0, 20, 2)]
-
-
