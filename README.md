@@ -22,6 +22,12 @@ In this model, we initially have a fixed wrist angle of 90 degrees, and then all
 
 ![controlled_a20](https://user-images.githubusercontent.com/26510814/162670536-add72abf-af55-4ce4-ba36-4094b9357c03.gif)
 
+## Golf Model
+
+![golf_swing_diagram](https://user-images.githubusercontent.com/26510814/162674110-8756bdbc-3931-4587-85b1-25903e89200c.png)
+
+![golf_model5](https://user-images.githubusercontent.com/26510814/162674115-a4781565-9694-4232-a174-44d4fc4a200e.png)
+
 ## Optimization of Wrist Flick Angle
 
 We optimize this angle so maximize the clubhead speed. We find that for higher arm angular accelerations, the optimal wrist flick angle is lower (later time).
