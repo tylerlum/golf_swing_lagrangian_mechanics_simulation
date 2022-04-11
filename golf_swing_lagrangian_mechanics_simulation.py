@@ -62,9 +62,9 @@ class Wrist_Type(Enum):
 
 
 # +
-T_FIXED = 1  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
+T_FIXED = 0.3  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
 ARM_TYPE = Arm_Type.PASSIVE_ARMS
-T_HORIZON = 10
+T_HORIZON = 3
 CONTROLLED_ARM_ANGULAR_ACCEL = 1
 
 # Initial conditions
@@ -261,13 +261,10 @@ Y_Q = Y_R + L_S*np.cos(φ - θ)
 # Compute clubhead speed
 D_X_Q = -L_A*np.cos(θ)*D_θ - L_S*np.cos(φ - θ)*(D_φ - D_θ)
 D_Y_Q = L_A*np.sin(θ)*D_θ - L_S*np.sin(φ - θ)*(D_φ - D_θ)
-# -
-
-np.where((X_Q > 0) & (Y_Q < 0))
 
 # +
 # Compute time and n of collision with ball
-n_collision = np.where((X_Q > 0) & (Y_Q < 0))[0][0]
+n_collision = np.squeeze(np.array(np.where((X_Q > 0) & (Y_Q < 0))))[0]
 t_collision = n_collision * DT
 x_collision = X_Q[n_collision]
 y_collision = Y_Q[n_collision]
@@ -310,16 +307,17 @@ ax.set_aspect(aspect=1)
 plt.grid()
 
 # Draw stickman
+person_color = 'b'
 head_radius = 0.15
 head_to_shoulder_dist = 0.3
-head_patch = plt.Circle((0, head_to_shoulder_dist), radius=head_radius, edgecolor='y', facecolor="none")
+head_patch = plt.Circle((0, head_to_shoulder_dist), radius=head_radius, edgecolor=person_color, facecolor="none")
 ax.add_patch(head_patch)
 body_len = 0.6
 hip_position = head_to_shoulder_dist-head_radius-body_len
-body_plot = ax.plot([0, 0], [head_to_shoulder_dist-head_radius, hip_position], color='y')
+body_plot = ax.plot([0, 0], [head_to_shoulder_dist-head_radius, hip_position], color=person_color)
 leg_len, leg_angle = 1, np.radians(15)
-left_leg_plot = ax.plot([0, -leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color='y')
-right_leg_plot = ax.plot([0, leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color='y')
+left_leg_plot = ax.plot([0, -leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color=person_color)
+right_leg_plot = ax.plot([0, leg_len*np.sin(leg_angle)], [hip_position, hip_position-leg_len*np.cos(leg_angle)], color=person_color)
 
 # Draw smile
 eye_dist = 0.1
@@ -339,9 +337,10 @@ ground_plot = ax.plot([xmin, xmax], [ground_level, ground_level], linewidth=10, 
 tee_plot = ax.plot([0, 0], [ground_level, y_collision-0.1], linewidth=5, color='k')
 
 # Create initial plots
-shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
-arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
-hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+arm_color = 'r'
+shoulder_plot, = ax.plot([0], [0], color=person_color, label='shoulder', marker='o', markersize=markersize/10)
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color=arm_color, label='arms')
+hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color=arm_color, label='hand/wrist', marker='o', markersize=markersize/10)
 
 shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
 clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
