@@ -24,6 +24,8 @@ In this model, we initially have a fixed wrist angle of 90 degrees, and then all
 
 ## Golf Model
 
+Below are diagrams that show the high-level approach we use to model a golf swing. For more information, you can check out [this document](golf_swing_lagrangian_mechanics_simulation.pdf).
+
 ![golf_swing_diagram](https://user-images.githubusercontent.com/26510814/162674110-8756bdbc-3931-4587-85b1-25903e89200c.png)
 
 ![golf_model5](https://user-images.githubusercontent.com/26510814/162674115-a4781565-9694-4232-a174-44d4fc4a200e.png)
