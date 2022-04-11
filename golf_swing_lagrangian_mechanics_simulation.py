@@ -45,7 +45,7 @@ class Forward_Sim_Method(Enum):
     IMPROVED_EULER = "IMPROVED_EULER"
 
 
-DT = 1e-4
+DT = 1e-3
 FORWARD_METHOD = Forward_Sim_Method.FORWARD_EULER
 
 
@@ -274,12 +274,112 @@ clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], wi
 #     plt.draw()
 #     plt.pause(0.00001)
 #     clubhead_speed_arrow.set_xdata()
+
+# +
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+n = 0
+markersize = 50
+
+shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+
+shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
+clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+
+
+for n in tqdm(range(n_steps)):
+    ax.clear()
+
+    shoulder_plot.set_xdata([0])
+    shoulder_plot.set_ydata([0])
+    arm_plot.set_xdata([0, X_R[n]])
+    arm_plot.set_ydata([0, Y_R[n]])
+    hand_plot.set_xdata([X_R[n]])
+    hand_plot.set_ydata([Y_R[n]])
+    shaft_plot.set_xdata([X_R[n], X_Q[n]])
+    shaft_plot.set_ydata([Y_R[n], Y_Q[n]])
+    clubhead_plot.set_xdata([X_Q[n]])
+    clubhead_plot.set_ydata([Y_Q[n]])
+#     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+    plt.draw()
+    plt.pause(0.001)
+    break
+#     pt.savefig(f'{n}.png')
+
+# +
+from celluloid import Camera
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+camera = Camera(fig)
+n = 0
+markersize = 50
+
+shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+
+shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
+clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+# clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+
+
+vals = np.linspace(int(T_FIXED/DT), n_steps-1, 100)
+for n in tqdm(vals):
+    n = int(n)
+    ax.clear()
+    
+    shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
+    arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+    hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+
+    shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
+    clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+#     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+    camera.snap()
+#     plt.savefig(f"{n}.png")
 # -
 
-hand_plot[0]
+from IPython.display import HTML # to show the animation in Jupyter
+animation = camera.animate() # animation ready
+HTML(animation.to_html5_video())
 
-hand_plot[0]
+t[-1]
 
-D_Y_Q
+# +
+from matplotlib.animation import FFMpegWriter
+metadata = dict(title='Moviesss', artist='tylers')
+writer = FFMpegWriter(fps=15, metadata=metadata)
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+n = 0
+markersize = 50
+
+shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+
+shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
+clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+# clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+
+with writer.saving(fig, "sinWave2.mp4", 100):
+
+    vals = np.linspace(int(T_FIXED/DT), n_steps-1, 100)
+    for n in tqdm(vals):
+        n = int(n)
+        ax.clear()
+        tsss = ax.text(0, 0, f'{n}')
+        shoulder_plot, = ax.plot([0], [0], color='y', label='shoulder', marker='o', markersize=markersize/10)
+        arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color='y', label='arms')
+        hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color='y', label='hand/wrist', marker='o', markersize=markersize/10)
+
+        shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
+        clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+    #     clubhead_speed_arrow = ax.arrow(x=X_Q[n], y=Y_Q[n], dx=D_X_Q[n], dy=D_Y_Q[n], width=0.01)
+    #     plt.savefig(f"{n}.png")
+        writer.grab_frame()
+
+# -
 
 
