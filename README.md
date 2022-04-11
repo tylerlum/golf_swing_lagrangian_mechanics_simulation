@@ -4,6 +4,8 @@ The purpose of this repository is to create a numerical simulation of a golf swi
 
 ## Visualizations of Golf Swings
 
+In this model, we initially have a fixed wrist angle of 90 degrees, and then allow the wrist angle to move freely at an arm angle of $\theta_{fixed}$. In the visualization, the arms are red when the wrist angle is fixed and magenta when the wrist angle is loose. 
+
 ### Passive Arm System: Golfer Simply Allows Gravity to Create the Swing
 
 ![passive](https://user-images.githubusercontent.com/26510814/162670542-5f607c12-73d3-4930-8198-e1d0e6e337b6.gif)
@@ -22,7 +24,7 @@ The purpose of this repository is to create a numerical simulation of a golf swi
 
 ## Optimization of Wrist Flick Angle
 
-In this model, we initially have a fixed wrist angle of 90 degrees, and then allow the wrist angle to move freely at an arm angle of $\theta_{fixed}$. We optimize this angle so maximize the clubhead speed. We find that for higher arm angular accelerations, the optimal wrist flick angle is lower (later time).
+We optimize this angle so maximize the clubhead speed. We find that for higher arm angular accelerations, the optimal wrist flick angle is lower (later time).
 
 ### Passive Arm System: Golfer Simply Allows Gravity to Create the Swing
 
