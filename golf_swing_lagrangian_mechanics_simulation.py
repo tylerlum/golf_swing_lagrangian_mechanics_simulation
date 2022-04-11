@@ -46,7 +46,7 @@ class Forward_Sim_Method(Enum):
 
 
 DT = 1e-3
-FORWARD_METHOD = Forward_Sim_Method.FORWARD_EULER
+FORWARD_METHOD = Forward_Sim_Method.IMPROVED_EULER
 
 
 # ## Select golf swing variable parameters
@@ -61,15 +61,10 @@ class Wrist_Type(Enum):
     LOOSE_WRIST = "LOOSE_WRIST"
 
 
-# +
-θ_FIXED = np.radians(20)  # Fixed wrist angle for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
-ARM_TYPE = Arm_Type.CONTROLLED_ARMS
-T_HORIZON = 3
-CONTROLLED_ARM_ANGULAR_ACCEL = -20
-
-# Initial conditions
-θ_0 = np.radians(90)  # Initial arm angle for backswing
-# -
+θ_FIXED = np.radians(95)
+θ_0 = np.radians(120)
+ARM_TYPE = Arm_Type.PASSIVE_ARMS
+CONTROLLED_ARM_ANGULAR_ACCEL = -2
 
 # ## Setup fixed golf swing variable parameters
 
@@ -79,6 +74,8 @@ L_A = 0.50 # Arm-length 0.5m https://www.craftyarncouncil.com/standards/man-size
 M_S = 0.065 + 0.050  # Shaft weight about 65g + 50g https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
 L_S = 45 * 2.54 / 100  # Shaft length about 45 inches https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
 M_C = 0.2  # Clubhead about 200g https://www.hirekogolf.com/head-weights-shaft-weights-and-balance-points-oh-my
+
+T_HORIZON = 3
 
 # Initial conditions
 D_θ_0 = 0  # No initial arm angle speed at start of backswing
@@ -210,7 +207,6 @@ for n in tqdm(range(n_steps - 1)):
         D_φ[n+1] = D_φ[n] + DT*dd_φ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
         φ[n+1] = φ[n] + DT*D_φ[n]
     elif FORWARD_METHOD == Forward_Sim_Method.IMPROVED_EULER:
-        raise NotImplementedError()
         # Compute intermediate values
         D_θ_n_plus_1 = D_θ[n] + DT*dd_θ_f(θ[n], D_θ[n], φ[n], D_φ[n], t[n])
         θ_n_plus_1 = θ[n] + DT*D_θ[n]
@@ -277,17 +273,19 @@ fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,10))
 axes[0].plot(t[:n_end], np.degrees(θ[:n_end]))
 axes[0].plot([T_FIXED, T_FIXED], [θ_min, θ_max], label='t_{fixed}', linestyle='dashed')
 axes[0].plot([t[0], t[n_end-1]], [np.degrees(θ_FIXED), np.degrees(θ_FIXED)], label='θ_{fixed}', linestyle='dashed')
+axes[0].plot([t_collision, t_collision], [θ_min, θ_max], label='t_{collision}', linestyle='dashed')
 axes[0].set_xlabel('t [s]')
 axes[0].set_ylabel('θ [degrees]')
-axes[0].set_title(f'θ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[0].set_title(f'θ vs. t')
 axes[0].legend()
 
 φ_min, φ_max = np.min(np.degrees(φ[:n_end])), np.max(np.degrees(φ[:n_end]))
 axes[1].plot(t[:n_end], np.degrees(φ[:n_end]))
 axes[1].plot([T_FIXED, T_FIXED], [φ_min, φ_max], label='t_{fixed}', linestyle='dashed')
+axes[1].plot([t_collision, t_collision], [φ_min, φ_max], label='t_{collision}', linestyle='dashed')
 axes[1].set_xlabel('t [s]')
 axes[1].set_ylabel('φ [degrees]')
-axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[1].set_title(f'φ vs. t')
 axes[1].legend()
 # -
 
@@ -298,8 +296,8 @@ from matplotlib.animation import FFMpegWriter
 
 # Setup FFMPEG saving
 fps = 50
-video_speedup = 0.1
-filename = f"golf_swing_{ARM_TYPE}_{T_FIXED}_{θ_0}.mp4"
+video_speedup = 1
+filename = f"golf_swing_{ARM_TYPE}_{θ_FIXED}_{θ_0}.mp4"
 metadata = dict(title='Golf Swing', artist='tylerlum')
 writer = FFMpegWriter(fps=fps, metadata=metadata)
 
@@ -311,7 +309,8 @@ ax.set_xlim([xmin, xmax])
 ax.set_ylim([ymin, ymax])
 ax.set_xlabel(f'x [m]')
 ax.set_ylabel(f'y [m]')
-ax.set_title(f'Golf swing for {ARM_TYPE}, t_fixed = {T_FIXED} s, θ_0 = {round(math.degrees(θ_0), 2)} deg, achieves {round(v_collision, 2)} m/s')
+# ax.set_title(f'Golf swing for {ARM_TYPE} (with a = {CONTROLLED_ARM_ANGULAR_ACCEL} rad/s^2), θ_fixed = {round(math.degrees(θ_FIXED), 2)} deg, achieves {round(v_collision, 2)} m/s')
+ax.set_title(f'Golf swing for {ARM_TYPE}, θ_fixed = {round(math.degrees(θ_FIXED), 2)} deg, achieves {round(v_collision, 2)} m/s')
 ax.set_aspect(aspect=1)
 plt.grid()
 
