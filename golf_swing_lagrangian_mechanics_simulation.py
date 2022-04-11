@@ -289,7 +289,7 @@ axes[1].set_title(f'φ vs. t')
 axes[1].legend()
 # -
 
-# ## Visualize golf swing
+# ## Visualize golf swing with video
 
 # +
 from matplotlib.animation import FFMpegWriter
@@ -373,6 +373,12 @@ with writer.saving(fig, filename, dpi=100):
         arm_plot.set_color(color)
 
         writer.grab_frame()
-# -
 
+# +
+from IPython.display import HTML
 
+HTML(f"""
+    <video alt="test" controls>
+        <source src="{filename}" type="video/mp4">
+    </video>
+""")
