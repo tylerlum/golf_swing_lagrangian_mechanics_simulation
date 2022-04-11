@@ -63,12 +63,12 @@ class Wrist_Type(Enum):
 
 # +
 T_FIXED = 0.3  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
-ARM_TYPE = Arm_Type.PASSIVE_ARMS
+ARM_TYPE = Arm_Type.CONTROLLED_ARMS
 T_HORIZON = 3
-CONTROLLED_ARM_ANGULAR_ACCEL = 1
+CONTROLLED_ARM_ANGULAR_ACCEL = -20
 
 # Initial conditions
-θ_0 = np.radians(150)  # Initial arm angle for backswing
+θ_0 = np.radians(90)  # Initial arm angle for backswing
 # -
 
 # ## Setup fixed golf swing variable parameters
@@ -290,7 +290,7 @@ from matplotlib.animation import FFMpegWriter
 
 # Setup FFMPEG saving
 fps = 50
-filename = f"golf_swing.mp4"
+filename = f"golf_swing_{ARM_TYPE}_{T_FIXED}_{θ_0}.mp4"
 metadata = dict(title='Golf Swing', artist='tylerlum')
 writer = FFMpegWriter(fps=fps, metadata=metadata)
 
