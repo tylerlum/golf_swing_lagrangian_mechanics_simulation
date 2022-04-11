@@ -62,7 +62,7 @@ class Wrist_Type(Enum):
 
 
 # +
-T_FIXED = 0.3  # Fixed wrist angle  for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
+θ_FIXED = np.radians(20)  # Fixed wrist angle for t in [0, t_fixed], then free wrist angle for t in [t_fixed, infty]
 ARM_TYPE = Arm_Type.CONTROLLED_ARMS
 T_HORIZON = 3
 CONTROLLED_ARM_ANGULAR_ACCEL = -20
@@ -181,7 +181,7 @@ for n in tqdm(range(n_steps - 1)):
     # Currently at step n (time t), will be calculating values for n+1 (time t+dt)
     
     # Validate input
-    wrist_type = Wrist_Type.FIXED_WRIST if t[n] < T_FIXED else Wrist_Type.LOOSE_WRIST
+    wrist_type = Wrist_Type.FIXED_WRIST if θ[n] > θ_FIXED else Wrist_Type.LOOSE_WRIST
     if wrist_type != Wrist_Type.FIXED_WRIST and wrist_type != Wrist_Type.LOOSE_WRIST:
         raise ValueError(f"Invalid wrist_type = {wrist_type}")
     if ARM_TYPE != Arm_Type.PASSIVE_ARMS and ARM_TYPE != Arm_Type.CONTROLLED_ARMS:
@@ -227,29 +227,11 @@ for n in tqdm(range(n_steps - 1)):
     else:
         raise ValueError(f"Invalid FORWARD_METHOD = {FORWARD_METHOD}")
 
-# ## Plot golf swing
+# ## Post-process simulation
 
-# +
-fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,10))
-
-θ_min, θ_max = np.min(np.degrees(θ)), np.max(np.degrees(θ))
-axes[0].plot(t, np.degrees(θ))
-axes[0].plot([T_FIXED, T_FIXED], [θ_min, θ_max], label='t_{fixed}')
-axes[0].set_xlabel('t [s]')
-axes[0].set_ylabel('θ [degrees]')
-axes[0].set_title(f'θ vs. t for ARM_TYPE = {ARM_TYPE}')
-axes[0].legend()
-
-φ_min, φ_max = np.min(np.degrees(φ)), np.max(np.degrees(φ))
-axes[1].plot(t, np.degrees(φ))
-axes[1].plot([T_FIXED, T_FIXED], [φ_min, φ_max], label='t_{fixed}')
-axes[1].set_xlabel('t [s]')
-axes[1].set_ylabel('φ [degrees]')
-axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
-axes[1].legend()
-# -
-
-# ## Visualize golf swing
+n_fixed = np.squeeze(np.array(np.where(θ < θ_FIXED)))[0]
+T_FIXED = t[n_fixed]
+print(f"Transitions from fixed wrist to loose wrist at T_FIXED = {T_FIXED} s")
 
 # +
 # Compute positions
@@ -274,9 +256,9 @@ v_collision = (d_x_collision**2 + d_y_collision**2)**0.5
 print(f"First collision at n_collision = {n_collision}, t_collision = {t_collision} s")
 print(f"Collides at about (x={round(x_collision, 2)} m, y={round(y_collision, 2)} m) with speed {round(v_collision, 2)} m/s")
 
-t_collision_with_buffer = t_collision + 0.5
-n_collision_with_buffer = math.ceil(t_collision_with_buffer/DT)
-print(f"Will run sim up to n_collision_with_buffer = {n_collision_with_buffer}, t_collision_with_buffer = {round(t_collision_with_buffer, 2)}")
+t_end = t_collision + 0.5
+n_end = math.ceil(t_end/DT)
+print(f"Will run sim up to n_end = {n_end}, t_end = {round(t_end, 2)}")
 
 # Compute xlim, ylim
 max_len = (L_A + L_S) * 1.2
@@ -284,12 +266,39 @@ xmin = -max_len
 xmax = max_len
 ymin = -max_len
 ymax = max_len
+# -
+
+# ## Plot golf swing
+
+# +
+fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,10))
+
+θ_min, θ_max = np.min(np.degrees(θ[:n_end])), np.max(np.degrees(θ[:n_end]))
+axes[0].plot(t[:n_end], np.degrees(θ[:n_end]))
+axes[0].plot([T_FIXED, T_FIXED], [θ_min, θ_max], label='t_{fixed}', linestyle='dashed')
+axes[0].plot([t[0], t[n_end-1]], [np.degrees(θ_FIXED), np.degrees(θ_FIXED)], label='θ_{fixed}', linestyle='dashed')
+axes[0].set_xlabel('t [s]')
+axes[0].set_ylabel('θ [degrees]')
+axes[0].set_title(f'θ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[0].legend()
+
+φ_min, φ_max = np.min(np.degrees(φ[:n_end])), np.max(np.degrees(φ[:n_end]))
+axes[1].plot(t[:n_end], np.degrees(φ[:n_end]))
+axes[1].plot([T_FIXED, T_FIXED], [φ_min, φ_max], label='t_{fixed}', linestyle='dashed')
+axes[1].set_xlabel('t [s]')
+axes[1].set_ylabel('φ [degrees]')
+axes[1].set_title(f'φ vs. t for ARM_TYPE = {ARM_TYPE}')
+axes[1].legend()
+# -
+
+# ## Visualize golf swing
 
 # +
 from matplotlib.animation import FFMpegWriter
 
 # Setup FFMPEG saving
 fps = 50
+video_speedup = 0.1
 filename = f"golf_swing_{ARM_TYPE}_{T_FIXED}_{θ_0}.mp4"
 metadata = dict(title='Golf Swing', artist='tylerlum')
 writer = FFMpegWriter(fps=fps, metadata=metadata)
@@ -339,20 +348,32 @@ tee_plot = ax.plot([0, 0], [ground_level, y_collision-0.1], linewidth=5, color='
 # Create initial plots
 arm_color = 'r'
 shoulder_plot, = ax.plot([0], [0], color=person_color, label='shoulder', marker='o', markersize=markersize/10)
-arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color=arm_color, label='arms')
+arm_plot, = ax.plot([0, X_R[n]], [0, Y_R[n]], color=arm_color, label='arms', linewidth=5)
 hand_plot, = ax.plot([X_R[n]], [Y_R[n]], color=arm_color, label='hand/wrist', marker='o', markersize=markersize/10)
 
 shaft_plot, = ax.plot([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]], color='k', label='shaft')
 clubhead_plot, = ax.plot([X_Q[n]], [Y_Q[n]], color='k', label='clubhead', marker='o', markersize=markersize)
+time_text = ax.text(xmin*0.9, ymax*0.9, f"t = {round(n*DT, 3)} s ({video_speedup}x real-time)", fontsize='xx-large')
 
 with writer.saving(fig, filename, dpi=100):
     t_btwn_frames = 1 / fps
-    steps_btwn_frames = math.ceil(t_btwn_frames/DT)
+    steps_btwn_frames = math.ceil(t_btwn_frames/DT*video_speedup)
 
-    for n in tqdm(range(0, n_collision_with_buffer, steps_btwn_frames)):
+    for n in tqdm(range(0, n_end, steps_btwn_frames)):
+        # Update data
         shoulder_plot.set_data([0], [0])
         arm_plot.set_data([0, X_R[n]], [0, Y_R[n]])
         hand_plot.set_data([X_R[n]], [Y_R[n]])
         shaft_plot.set_data([X_R[n], X_Q[n]], [Y_R[n], Y_Q[n]])
         clubhead_plot.set_data([X_Q[n]], [Y_Q[n]])
+        time_text.set_text(f"t = {round(n*DT, 3)} s ({video_speedup}x real-time)")
+
+        # Update color based on wrist
+        tn = n * DT
+        color = arm_color if tn < T_FIXED else 'm'
+        arm_plot.set_color(color)
+
         writer.grab_frame()
+# -
+
+
